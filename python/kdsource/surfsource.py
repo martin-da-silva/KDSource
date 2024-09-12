@@ -3,7 +3,7 @@ import subprocess
 from enum import Enum
 from math import cos, pi, sin
 
-# from astropy.stats import knuth_bin_width
+from astropy.stats import knuth_bin_width
 
 import h5py
 
@@ -255,9 +255,14 @@ class SurfaceSourceFile:
         pulse_shape="rectangular",
     ):
         # Initialize SurfaceSource class atributes
+<<<<<<< HEAD
         if filepath is not None:
             self._filepath = filepath
             self._extension = os.path.splitext(self._filepath)[-1]
+=======
+        self._filepath = filepath
+        self._extension = os.path.splitext(self._filepath)[-1]
+>>>>>>> f06ba7d (New release 0.1.0 (#40))
         self._translation = translation
         self._rotation = rotation
         self._domain = domain
@@ -275,6 +280,7 @@ class SurfaceSourceFile:
         self._convoluted = convoluted
         self._shape = pulse_shape
         self._cloned = skip_cloned
+<<<<<<< HEAD
         if filepath is not None:
             self._df = self.__read__()
             self._df2 = self.get_pandas_dataframe()
@@ -289,6 +295,12 @@ class SurfaceSourceFile:
         new_sourface_source._df2 = self._df2.copy()
         return new_sourface_source
 
+=======
+        self._df = self.__read__()
+        self._df2 = self.get_pandas_dataframe()
+        self._brilliance = 1.0
+
+>>>>>>> f06ba7d (New release 0.1.0 (#40))
     def __read__(self):
         # OpenMC .h5 format
         if self._extension == ".h5":
@@ -307,10 +319,14 @@ class SurfaceSourceFile:
                 df["v"] = fh["source_bank"]["u"]["y"]
                 df["w"] = fh["source_bank"]["u"]["z"]
                 df["wgt"] = fh["source_bank"]["wgt"]
+<<<<<<< HEAD
                 try: 
                     df["t"] = fh["source_bank"]["time"] * 1e3  # s to ms
                 except:
                     df["t"] = 0.5
+=======
+                df["t"] = fh["source_bank"]["time"] * 1e3  # s to ms
+>>>>>>> f06ba7d (New release 0.1.0 (#40))
                 df["px"] = 0.0
                 df["py"] = 0.0
                 df["pz"] = 0.0
@@ -433,10 +449,14 @@ class SurfaceSourceFile:
         df["psi"] = np.arccos(df[W].to_numpy())
         df["phi"] = np.arctan2(df[V].to_numpy(), df[U].to_numpy())
         df["ln(E0/E)"] = np.log(self._E0 / df["E"].to_numpy())
+<<<<<<< HEAD
         try:
             df["log(t)"] = np.log10(df["t"].to_numpy())
         except:
             print("no time")
+=======
+        df["log(t)"] = np.log10(df["t"].to_numpy())
+>>>>>>> f06ba7d (New release 0.1.0 (#40))
         # df['lambda'] = 72.3 / 252.8 * (df['E'] * 1e6)**-0.5
         df["lambda"] = wavelength(df["type"].to_numpy(), df["E"].to_numpy())
         # Check domain
@@ -740,6 +760,7 @@ class SurfaceSourceFile:
         for i, (bin, var, scale) in enumerate(zip(bins, vars, scales)):
             # If bins is int, create a mesh from var-min to var-max
             if type(bin) is int:
+<<<<<<< HEAD
                 # if bin == 0:
                 #     if scale == "log":
                 #         bins[i] = knuth_bin_width(
@@ -759,6 +780,27 @@ class SurfaceSourceFile:
                 else:
                     bins[i] = np.linspace(
                         df[var].min(), df[var].max(), bin)
+=======
+                if bin == 0:
+                    if scale == "log":
+                        bins[i] = knuth_bin_width(
+                            np.log10(df[var].to_numpy()), return_bins=True
+                        )[1]
+                        bins[i] = 10 ** bins[i]
+                    else:
+                        bins[i] = knuth_bin_width(df[var].to_numpy(),
+                                                  return_bins=True)[1]
+
+                else:
+                    if scale == "log":
+                        bins[i] = np.logspace(
+                            np.log10(df[var].min()), np.log10(
+                                df[var].max()), bin
+                        )
+                    else:
+                        bins[i] = np.linspace(
+                            df[var].min(), df[var].max(), bin)
+>>>>>>> f06ba7d (New release 0.1.0 (#40))
             else:
                 # If var is angle, convert degrees to radians
                 if var == "psi" or var == "phi" or var == "theta":
@@ -881,8 +923,11 @@ class SurfaceSourceFile:
         vmin=None,
         vmax=None,
         peak_brilliance=False,
+<<<<<<< HEAD
         plot_difference = False,
         Difference_to = None,
+=======
+>>>>>>> f06ba7d (New release 0.1.0 (#40))
         **kwargs
     ):
         """Plot 1-D or 2-D distribution for given variables
@@ -937,17 +982,25 @@ class SurfaceSourceFile:
             When the realive error is greater or equal than the tolerance,
             the mean values of the distribution are not shown.
             Default: 1.0
+<<<<<<< HEAD
         Difference_to: Surfsourcefile to be compared.
             The distribution to compared.*100s
         **kwargs
             Extra arguments that will be passed to matplotlib
             (label, color, and so on)
             
+=======
+        **kwargs
+            Extra arguments that will be passed to matplotlib
+            (label, color, and so on)
+
+>>>>>>> f06ba7d (New release 0.1.0 (#40))
         Returns
         -------
         matplotlib 1-D or 2-D plot for the required variables with the proper
         normalization.
         """
+<<<<<<< HEAD
         
         xscale, yscale = scales
         scales = [scales[i] for i in range(0, len(bins))]
@@ -964,6 +1017,13 @@ class SurfaceSourceFile:
             ylabel = 'ERROR[%]'
             zlabel = 'ERROR[%]'
             
+=======
+        xscale, yscale = scales
+        scales = [scales[i] for i in range(0, len(bins))]
+        df, bins, pinfo = self.get_distribution(
+            vars, bins, scales, factor, filters, norm_vars, convolution
+        )
+>>>>>>> f06ba7d (New release 0.1.0 (#40))
         if peak_brilliance and len(vars) == 2:
             df = df.groupby([var for var in vars if var != "t"]
                             ).max().reset_index()
@@ -998,15 +1058,21 @@ class SurfaceSourceFile:
                 )
             plt.xscale(xscale)
             plt.yscale(yscale)
+<<<<<<< HEAD
             plt.ylim(vmin,vmax)
             # plt.show()         
+=======
+>>>>>>> f06ba7d (New release 0.1.0 (#40))
             if XUNITS[vars[0]] != "":
                 plt.xlabel(r"${:s}$ [{:s}]".format(
                     XLATEX[vars[0]], XUNITS[vars[0]]))
             else:
                 plt.xlabel(r"${:s}$".format(XLATEX[vars[0]]))
             plt.ylabel(r"{:s}".format(Jlabel))
+<<<<<<< HEAD
             
+=======
+>>>>>>> f06ba7d (New release 0.1.0 (#40))
 
         elif len(bins) == 2:
             Jbrill = "Intensity" if zlabel is None else zlabel
@@ -1136,6 +1202,7 @@ class SurfaceSourceFile:
         """
         create_source_file(self._df2.copy(), filepath, **kwargs)
 
+<<<<<<< HEAD
     def get_current(self):
         """Weight summ over particle list.
         
@@ -1197,6 +1264,9 @@ class SurfaceSourceFile:
 
 
     
+=======
+
+>>>>>>> f06ba7d (New release 0.1.0 (#40))
 def create_source_file(df, filepath, **kwargs):
     """Generate a source file from a Pandas DataFrame.
     Possible formats: MCPL, HDF5 (OpenMC), SSV (KDSource)
