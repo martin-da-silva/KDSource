@@ -27,11 +27,12 @@
 #include "utils.h"
 #include "geom.h"
 #include "plist.h"
-
+#include "MersenneTwister.h"
 
 #define MAX_RESAMPLES 1000000
 #define NAME_MAX_LEN 256
 
+extern MersenneTwister64* MT;
 
 typedef double (*WeightFun)(const mcpl_particle_t* part);
 

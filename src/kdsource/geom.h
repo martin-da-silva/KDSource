@@ -40,6 +40,7 @@ typedef struct Geometry{
 	FILE* bwfile;     // Bandwidth file
 	double bw;        // Normalized bandwidth
 	char kernel;	  // Kernel
+	uint64_t* seed;		//posible seed to resample.
 
 	double* trasl;    // Geometry translation
 	double* rot;      // Geometry rotation
@@ -51,6 +52,8 @@ Geometry* Geom_copy(const Geometry* from);
 int Geom_perturb(const Geometry* geom, mcpl_particle_t* part);
 int Geom_next(Geometry* geom, int loop);
 void Geom_destroy(Geometry* geom);
+void Geom_seek(Geometry* geom,uint64_t poss);
+
 
 int E_perturb(const Metric* metric, mcpl_particle_t* part, double bw, char kernel);
 int Let_perturb(const Metric* metric, mcpl_particle_t* part, double bw, char kernel);

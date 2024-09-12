@@ -7,22 +7,22 @@
 
 // Sample with normal distribution (x0=0, s=1)
 double rand_norm(){
-	double y1 = (double)(rand()+1) / ((double)RAND_MAX+1), y2 = rand() / (double)RAND_MAX;
+	double y1 = (double)(MT64_rand()+1) / ((double)MT64_MAX+1), y2 = MT64_rand() / (double)MT64_MAX;
 	return sqrt(-2 * log(y1)) * cos(2 * M_PI * y2);
 }
 
 // Sample with Epanechnikov distribution (x0=0, s=1)
 double rand_epan(){
-	double x1=(double)rand()/((double)RAND_MAX/2.0) - 1.0;
-	double x2=(double)rand()/((double)RAND_MAX/2.0) - 1.0;
-	double x3=(double)rand()/((double)RAND_MAX/2.0) - 1.0;
+	double x1=(double)MT64_rand()/((double)MT64_MAX/2.0) - 1.0;
+	double x2=(double)MT64_rand()/((double)MT64_MAX/2.0) - 1.0;
+	double x3=(double)MT64_rand()/((double)MT64_MAX/2.0) - 1.0;
 	if(abs(x3)>=abs(x2) && abs(x3)>=abs(x1)) return x2;
 	else return x3;
 }
 
 // Sample with Tophat distribution (x0=0, s=1)
 double rand_box(){
-	double y1 = (double)rand()/((double)RAND_MAX/2.0) - 1.0;
+	double y1 = (double)MT64_rand()/((double)MT64_MAX/2.0) - 1.0;
 	return y1;
 }
 

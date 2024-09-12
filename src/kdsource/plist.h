@@ -38,6 +38,11 @@ PList* PList_create(char pt, const char* filename, const double* trasl, const do
 PList* PList_copy(const PList* from);
 int PList_get(const PList* plist, mcpl_particle_t* part);
 int PList_next(PList* plist, int loop);
+void PList_offset(PList* plist, uint64_t offset);
+void PList_seek(PList* plist, uint64_t poss);
+uint64_t Plist_current(PList* plist);
+
+
 void PList_destroy(PList* plist);
 
 

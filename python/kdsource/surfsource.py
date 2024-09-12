@@ -3,7 +3,7 @@ import subprocess
 from enum import Enum
 from math import cos, pi, sin
 
-from astropy.stats import knuth_bin_width
+# from astropy.stats import knuth_bin_width
 
 import h5py
 
@@ -255,8 +255,9 @@ class SurfaceSourceFile:
         pulse_shape="rectangular",
     ):
         # Initialize SurfaceSource class atributes
-        self._filepath = filepath
-        self._extension = os.path.splitext(self._filepath)[-1]
+        if filepath is not None:
+            self._filepath = filepath
+            self._extension = os.path.splitext(self._filepath)[-1]
         self._translation = translation
         self._rotation = rotation
         self._domain = domain
@@ -274,9 +275,19 @@ class SurfaceSourceFile:
         self._convoluted = convoluted
         self._shape = pulse_shape
         self._cloned = skip_cloned
-        self._df = self.__read__()
-        self._df2 = self.get_pandas_dataframe()
+        if filepath is not None:
+            self._df = self.__read__()
+            self._df2 = self.get_pandas_dataframe()
         self._brilliance = 1.0
+
+
+    def copy(self,**kwargs):
+        new_sourface_source = SurfaceSourceFile(None,self._S0,self._Np,self._dA,self._translation,self._rotation,self._domain,self._domain_first,self._rotation_first,self._E0,self._convoluted)
+        new_sourface_source._filepath = self._filepath
+        new_sourface_source._extension = self._extension
+        new_sourface_source._df = self._df.copy()
+        new_sourface_source._df2 = self._df2.copy()
+        return new_sourface_source
 
     def __read__(self):
         # OpenMC .h5 format
@@ -296,7 +307,10 @@ class SurfaceSourceFile:
                 df["v"] = fh["source_bank"]["u"]["y"]
                 df["w"] = fh["source_bank"]["u"]["z"]
                 df["wgt"] = fh["source_bank"]["wgt"]
-                df["t"] = fh["source_bank"]["time"] * 1e3  # s to ms
+                try: 
+                    df["t"] = fh["source_bank"]["time"] * 1e3  # s to ms
+                except:
+                    df["t"] = 0.5
                 df["px"] = 0.0
                 df["py"] = 0.0
                 df["pz"] = 0.0
@@ -419,7 +433,10 @@ class SurfaceSourceFile:
         df["psi"] = np.arccos(df[W].to_numpy())
         df["phi"] = np.arctan2(df[V].to_numpy(), df[U].to_numpy())
         df["ln(E0/E)"] = np.log(self._E0 / df["E"].to_numpy())
-        df["log(t)"] = np.log10(df["t"].to_numpy())
+        try:
+            df["log(t)"] = np.log10(df["t"].to_numpy())
+        except:
+            print("no time")
         # df['lambda'] = 72.3 / 252.8 * (df['E'] * 1e6)**-0.5
         df["lambda"] = wavelength(df["type"].to_numpy(), df["E"].to_numpy())
         # Check domain
@@ -723,25 +740,25 @@ class SurfaceSourceFile:
         for i, (bin, var, scale) in enumerate(zip(bins, vars, scales)):
             # If bins is int, create a mesh from var-min to var-max
             if type(bin) is int:
-                if bin == 0:
-                    if scale == "log":
-                        bins[i] = knuth_bin_width(
-                            np.log10(df[var].to_numpy()), return_bins=True
-                        )[1]
-                        bins[i] = 10 ** bins[i]
-                    else:
-                        bins[i] = knuth_bin_width(df[var].to_numpy(),
-                                                  return_bins=True)[1]
+                # if bin == 0:
+                #     if scale == "log":
+                #         bins[i] = knuth_bin_width(
+                #             np.log10(df[var].to_numpy()), return_bins=True
+                #         )[1]
+                #         bins[i] = 10 ** bins[i]
+                #     else:
+                #         bins[i] = knuth_bin_width(df[var].to_numpy(),
+                #                                   return_bins=True)[1]
 
+                # else:
+                if scale == "log":
+                    bins[i] = np.logspace(
+                        np.log10(df[var].min()), np.log10(
+                            df[var].max()), bin
+                    )
                 else:
-                    if scale == "log":
-                        bins[i] = np.logspace(
-                            np.log10(df[var].min()), np.log10(
-                                df[var].max()), bin
-                        )
-                    else:
-                        bins[i] = np.linspace(
-                            df[var].min(), df[var].max(), bin)
+                    bins[i] = np.linspace(
+                        df[var].min(), df[var].max(), bin)
             else:
                 # If var is angle, convert degrees to radians
                 if var == "psi" or var == "phi" or var == "theta":
@@ -864,6 +881,8 @@ class SurfaceSourceFile:
         vmin=None,
         vmax=None,
         peak_brilliance=False,
+        plot_difference = False,
+        Difference_to = None,
         **kwargs
     ):
         """Plot 1-D or 2-D distribution for given variables
@@ -918,20 +937,33 @@ class SurfaceSourceFile:
             When the realive error is greater or equal than the tolerance,
             the mean values of the distribution are not shown.
             Default: 1.0
+        Difference_to: Surfsourcefile to be compared.
+            The distribution to compared.*100s
         **kwargs
             Extra arguments that will be passed to matplotlib
             (label, color, and so on)
-
+            
         Returns
         -------
         matplotlib 1-D or 2-D plot for the required variables with the proper
         normalization.
         """
+        
         xscale, yscale = scales
         scales = [scales[i] for i in range(0, len(bins))]
+        
         df, bins, pinfo = self.get_distribution(
             vars, bins, scales, factor, filters, norm_vars, convolution
         )
+        
+        if plot_difference:
+            df['mean'] =(1 - Difference_to.get_distribution(
+                vars, bins, scales, factor, filters, norm_vars, convolution
+            )[0]['mean']/df['mean'])
+            df['mean'] = np.abs(df['mean']*100)
+            ylabel = 'ERROR[%]'
+            zlabel = 'ERROR[%]'
+            
         if peak_brilliance and len(vars) == 2:
             df = df.groupby([var for var in vars if var != "t"]
                             ).max().reset_index()
@@ -966,12 +998,15 @@ class SurfaceSourceFile:
                 )
             plt.xscale(xscale)
             plt.yscale(yscale)
+            plt.ylim(vmin,vmax)
+            # plt.show()         
             if XUNITS[vars[0]] != "":
                 plt.xlabel(r"${:s}$ [{:s}]".format(
                     XLATEX[vars[0]], XUNITS[vars[0]]))
             else:
                 plt.xlabel(r"${:s}$".format(XLATEX[vars[0]]))
             plt.ylabel(r"{:s}".format(Jlabel))
+            
 
         elif len(bins) == 2:
             Jbrill = "Intensity" if zlabel is None else zlabel
@@ -1101,7 +1136,67 @@ class SurfaceSourceFile:
         """
         create_source_file(self._df2.copy(), filepath, **kwargs)
 
+    def get_current(self):
+        """Weight summ over particle list.
+        
+        Returns
+        ----------
+        current: float.
+        
+        """
+        return (self.get_distribution(vars=['E'],bins=[2],total=True)[0]).nominal_value #tengo que poner algo para que no sea con la eneria, ni con niguna variable, que sea con lo que tiene.
+    
+    def Source_factor(self, Surface, update = False):
+        """Calculates the source factor corresponding to equating currents between "Surface" and this.
+        
+        Parameters
+        ----------
+        Surface: SourfaceSourceFile 
+            Particle list to compare currents.
+        update: bool
+            Variable to choose if you want to update the new Source Factor
+        
+        Returns
+        ----------
+        Source factor in units of "n/s"
+        
+        """
+        S = Surface.get_current()/self.get_current()
+        if update == True:
+            self._S0 *= S
+        return self._S0
+    
+    def Filter_Sourface_Source(self, domain={}):
+        
+        """Generates a source_source object by filtering on a phase space domain
 
+        Parameters
+        ----------
+        domain: dict
+            Range of the variables: var_min <= 'var' < var_max.
+            It must be defined like: {'var':[var_min, var_max]}.
+            List of possible variables:
+            type [PDG],
+            E [MeV], ln(E0/E), lambda [AA],
+            x [cm], y [cm], z [cm], R [cm], theta [rad],
+            u, v, w, phi [rad], psi [rad],
+            t [ms], log(t),
+            wgt.
+            Default: {}
+
+        Returns
+        ----------
+            SourfaceSource Object with the proper source factor.
+        """
+
+        new_sourface_source = self.copy()
+        new_sourface_source._domain = domain
+        new_sourface_source._df2 = new_sourface_source._set_domain(new_sourface_source._df2)
+        new_sourface_source.Source_factor(self, update=True)
+        return new_sourface_source
+
+
+    
 def create_source_file(df, filepath, **kwargs):
     """Generate a source file from a Pandas DataFrame.
     Possible formats: MCPL, HDF5 (OpenMC), SSV (KDSource)

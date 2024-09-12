@@ -7,6 +7,8 @@
 
 #include "kdsource.h"
 
+// MersenneTwister64* MT = MT64_create(NULL);
+MersenneTwister64* MT = NULL;
 
 void KDS_error(const char* msg){
 	printf("KDSource error: %s\n", msg);
@@ -17,12 +19,16 @@ void KDS_end(const char* msg){
 	exit(EXIT_SUCCESS);
 }
 
+
 KDSource* KDS_create(double J, char kernel, PList* plist, Geometry* geom){
 	KDSource* kds = (KDSource*)malloc(sizeof(KDSource));
 	kds->J = J;
 	kds->kernel = kernel;
 	kds->plist = plist;
 	kds->geom = geom;
+
+	// MT = (MersenneTwister64*)malloc(sizeof(MersenneTwister64));
+	MT = MT64_create(NULL);
 	return kds;
 }
 
@@ -43,7 +49,6 @@ KDSource* KDS_open(const char* xmlfilename){
 	int switch_x2z, variable_bw;
 	char* bwfilename=NULL;
 	double bw=0;
-
 	// Read file
 	printf("Reading xmlfile %s...\n", xmlfilename);
 	xmlDocPtr doc = xmlReadFile(xmlfilename, NULL, 0);
@@ -180,6 +185,10 @@ KDSource* KDS_open(const char* xmlfilename){
 
 int KDS_sample2(KDSource* kds, mcpl_particle_t* part, int perturb, double w_crit, WeightFun bias, int loop){
 	int ret=0;
+	if(kds->geom->seed != NULL)
+	{
+		initializeMersenneTwister64(MT,kds->geom->seed);
+	}
 	if(w_crit <= 0){
 		PList_get(kds->plist, part);
 		if(perturb) Geom_perturb(kds->geom, part);
@@ -195,7 +204,7 @@ int KDS_sample2(KDSource* kds, mcpl_particle_t* part, int perturb, double w_crit
 			else bs = 1;
 			if(part->weight*bs > w_crit){ // If w*bs>w_crit, use w_crit/w*bs as prob of going forward in list
 				if(perturb) Geom_perturb(kds->geom, part);
-				if(rand() < w_crit/(part->weight*bs)*RAND_MAX){
+				if(MT64_rand() < w_crit/(part->weight*bs)*MT64_MAX){
 					ret += PList_next(kds->plist, loop);
 					ret += Geom_next(kds->geom, loop);
 				}
@@ -203,7 +212,7 @@ int KDS_sample2(KDSource* kds, mcpl_particle_t* part, int perturb, double w_crit
 			}
 			else{ // If w*bs<w_crit, use w*bs/w_crit as prob of taking particle
 				int take = 0;
-				if(rand() < (part->weight*bs)/w_crit*RAND_MAX){
+				if(MT64_rand() < (part->weight*bs)/w_crit*MT64_MAX){
 					take = 1;
 					if(perturb) Geom_perturb(kds->geom, part);
 				}
@@ -241,7 +250,12 @@ double KDS_w_mean(KDSource* kds, int N, WeightFun bias){
 void KDS_destroy(KDSource* kds){
 	PList_destroy(kds->plist);
 	Geom_destroy(kds->geom);
+	if (MT != NULL){
+		MT64_destroy(MT);
+		MT = NULL;
+	}
 	free(kds);
+	
 }
 
 
@@ -271,7 +285,7 @@ MultiSource* MS_open(int len, const char** xmlfilenames, const double* ws){
 }
 
 int MS_sample2(MultiSource* ms, mcpl_particle_t* part, int perturb, double w_crit, WeightFun bias, int loop){
-	double y = rand() / ((double)RAND_MAX+1);
+	double y = MT64_rand() / ((double)MT64_MAX+1);
 	int i, ret;
 	if(ms->cdf[ms->len-1] <= 0) i = (int)(y*ms->len);
 	else for(i=0; y*ms->cdf[ms->len-1]>ms->cdf[i]; i++);

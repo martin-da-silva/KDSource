@@ -62,7 +62,6 @@ int main(int argc, char *argv[]){
 	const char *filename;
 	const char *outfilename;
 	long int N;
-
 	if(resample_parse_args(argc, argv, &filename, &outfilename, &N)) return 1;
 
 	KDSource* kds = KDS_open(filename);
@@ -70,7 +69,6 @@ int main(int argc, char *argv[]){
 
 	mcpl_outfile_t file = mcpl_create_outfile(outfilename);
 	mcpl_hdr_set_srcname(file, "KDSource resample");
-
 	double w_crit = KDS_w_mean(kds, 1000, NULL);
 
 	printf("Resampling...\n");

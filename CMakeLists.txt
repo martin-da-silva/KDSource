@@ -31,6 +31,7 @@ add_subdirectory(mcpl)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 
 add_library(kdsource SHARED "${SRC}/kdsource/kdsource.c"
+                            "${SRC}/kdsource/MersenneTwister.c"
                             "${SRC}/kdsource/plist.c"
                             "${SRC}/kdsource/geom.c"
                             "${SRC}/kdsource/utils.c")
@@ -38,6 +39,7 @@ target_include_directories(kdsource PUBLIC "${SRC}/kdsource" "${CMAKE_CURRENT_BI
 target_link_libraries(kdsource PUBLIC m LibXml2::LibXml2 mcpl)
 install(TARGETS kdsource DESTINATION lib)
 install(FILES "${SRC}/kdsource/kdsource.h"
+              "${SRC}/kdsource/MersenneTwister.h"
               "${SRC}/kdsource/plist.h"
               "${SRC}/kdsource/geom.h"
               "${SRC}/kdsource/utils.h"
