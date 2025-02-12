@@ -8,9 +8,9 @@
 
 
 void display_usage() {
-	printf("Usage: kdtool resample sourcefile [options]\n\n");
-	printf("Resample particles from source defined in XML file sourcefile, and save them in\n");
-	printf("a MCPL file.\n\n");
+	printf("Usage: kdtool resample sourcefile1 [sourcefile2 ...] [options]\n\n");
+    printf("Resample particles from sources defined in XML files, and save them\n");
+	printf("in a MCPL file.\n\n");
 	printf("Options:\n");
 	printf("\t-o outfile: Name of MCPL file with new samples\n");
 	printf("\t            (default: \"resampled.mcpl\").\n");
@@ -18,13 +18,13 @@ void display_usage() {
 	printf("\t-h, --help: Display usage instructions.\n");
 }
 
-int resample_parse_args(int argc, char **argv, const char ***xml_files, const char **outfilename, long int *N) {
+int resample_parse_args(int argc, char **argv, const char ***xmlfilenames, const char **outfilename, long int *N) {
 	*outfilename = 0;
 	*N = 1E5;
 	int xml_count = 0;
 	int xml_capacity = 4; // Initial capacity for XML files array
-    *xml_files = (const char **)malloc(xml_capacity * sizeof(char *));
-    if (*xml_files == NULL){
+    *xmlfilenames = (const char **)malloc(xml_capacity * sizeof(char *));
+    if (*xmlfilenames == NULL){
         perror("Failed to allocate memory for XML files");
         exit(1);
     }
@@ -49,13 +49,13 @@ int resample_parse_args(int argc, char **argv, const char ***xml_files, const ch
 			
 			if (xml_count >= xml_capacity) {
 				xml_capacity *= 2;
-				*xml_files = (const char **)realloc(*xml_files, xml_capacity * sizeof(char *));
-				if (*xml_files == NULL) {
+				*xmlfilenames = (const char **)realloc(*xmlfilenames, xml_capacity * sizeof(char *));
+				if (*xmlfilenames == NULL) {
 					perror("Failed to reallocate memory for XML files");
 					exit(1);
 				}
 			}
-			(*xml_files)[xml_count++] = argv[i];
+			(*xmlfilenames)[xml_count++] = argv[i];
 			continue;
 		}
 		printf("Error: Invalid argument: %s.\nUse -h or --help for help.\n",argv[i]);
@@ -67,8 +67,8 @@ int resample_parse_args(int argc, char **argv, const char ***xml_files, const ch
 		exit(1);
 	}
 
-    *xml_files = (const char **)realloc(*xml_files, xml_count * sizeof(char *));
-    if (*xml_files == NULL) {
+    *xmlfilenames = (const char **)realloc(*xmlfilenames, xml_count * sizeof(char *));
+    if (*xmlfilenames == NULL) {
         perror("Failed to reallocate memory for XML files");
         exit(1);
     }
@@ -78,21 +78,67 @@ int resample_parse_args(int argc, char **argv, const char ***xml_files, const ch
 }
 
 int main(int argc, char *argv[]) {
-	const char **xml_files;
+	const char **xmlfilenames;
     const char *outfilename;
     long int N;
-    int xml_count = resample_parse_args(argc, argv, &xml_files, &outfilename, &N);
+    int xml_count = resample_parse_args(argc, argv, &xmlfilenames, &outfilename, &N);
+	
+	mcpl_particle_t part;
+	mcpl_outfile_t file = mcpl_create_outfile(outfilename);
+	mcpl_hdr_set_srcname(file, "KDSource resample");
 
-    // Example usage of xml_files
-    for (int i = 0; i < xml_count; i++) {
-        printf("XML file: %s\n", xml_files[i]);
-    }
+	if (xml_count == 1) {
+		KDSource* kds = KDS_open(xmlfilenames[0]);
+		double w_crit = KDS_w_mean(kds, 1000, NULL);
 
-    printf("Output file: %s\n", outfilename);
-    printf("Number of samples: %ld\n", N);
+		printf("Resampling...\n");
+		long int i;
+		for(i=0; i<N; i++){
+			KDS_sample2(kds, &part, 1, w_crit, NULL, 1);
+			mcpl_add_particle(file, &part);
+		}
+	}
+	else if (xml_count)
+	{
+		MultiSource* ms = MS_open(xml_count, xmlfilenames, NULL);
+		double w_crit = MS_w_mean(ms, 1000, NULL);
 
-    
-    free(xml_files);
+		printf("Resampling...\n");
+		for(long int i = 0; i < N; i++){
+			MS_sample2(ms, &part, 1, w_crit, NULL, 1);
+			mcpl_add_particle(file, &part);
+		}
+	}
+	
+	mcpl_closeandgzip_outfile(file);
+	printf("Successfully sampled %ld particles.\n", N);
+    free(xmlfilenames);
 
 	return 0;
 }
+/*
+int main(int argc, char *argv[]){
+	const char *filename;
+	const char *outfilename;
+	long int N;
+	if(resample_parse_args(argc, argv, &filename, &outfilename, &N)) return 1;
+
+	KDSource* kds = KDS_open(filename);
+	mcpl_particle_t part;
+
+	mcpl_outfile_t file = mcpl_create_outfile(outfilename);
+	mcpl_hdr_set_srcname(file, "KDSource resample");
+	double w_crit = KDS_w_mean(kds, 1000, NULL);
+
+	printf("Resampling...\n");
+	long int i;
+	for(i=0; i<N; i++){
+		KDS_sample2(kds, &part, 1, w_crit, NULL, 1);
+		mcpl_add_particle(file, &part);
+	}
+	mcpl_closeandgzip_outfile(file);
+	printf("Successfully sampled %ld particles.\n", N);
+
+	return 0;
+}
+*/

@@ -7,7 +7,7 @@ display_usage(){
 	echo -e "KDSource is a Monte Carlo calculations assistance tool. It implements particles"
 	echo -e "density estimation and sampling by means of Kernel Density Estimation method.\n"
 	echo -e "Options:"
-	echo -e "\tresample:   Resample particles based on a kdsource XML file."
+	echo -e "\tresample:   Resample particles based on one or more kdsource XML files."
 	echo -e "\ttemplates:  Copy templates for Monte Carlo calculations."
 	echo -e "\tbeamtest:   Test source with simple beam calculation."
 	echo -e "\t[Any MCPL command]"

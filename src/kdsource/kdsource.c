@@ -255,23 +255,36 @@ void KDS_destroy(KDSource* kds){
 		MT = NULL;
 	}
 	free(kds);
-	
 }
-
 
 MultiSource* MS_create(int len, KDSource** s, const double* ws){
 	MultiSource* ms = (MultiSource*)malloc(sizeof(MultiSource));
 	ms->len = len;
 	ms->s = (KDSource**)malloc(len*sizeof(KDSource*));
-	ms->ws = (double*)malloc(len*sizeof(double));
 	ms->J = 0;
-	int i;
-	for(i=0; i<len; i++){
-		ms->s[i] = s[i];
-		ms->ws[i] = ws[i];
-		ms->J += s[i]->J;
-	}
+	ms->ws = (double*)malloc(len*sizeof(double));
 	ms->cdf = (double*)malloc(ms->len*sizeof(double));
+
+	int i;
+	long long nparts_total = 0;
+	if (ws != NULL){
+		for(i=0; i<len; i++){
+			ms->s[i] = s[i];
+			ms->J += s[i]->J;
+			ms->ws[i] = ws[i];
+		}
+	}
+	else{
+		for(i=0; i<len; i++){
+			ms->s[i] = s[i];
+			ms->J += s[i]->J;
+			nparts_total += s[i]->plist->npts;
+		}
+		for(i=0; i<len; i++){
+			ms->ws[i] = (double)s[i]->plist->npts / (double)nparts_total;
+		}
+	}
+
 	for(i=0; i<ms->len; i++) ms->cdf[i] = ms->ws[i];
 	for(i=1; i<ms->len; i++) ms->cdf[i] += ms->cdf[i-1];
 	return ms;
@@ -301,9 +314,8 @@ int MS_sample(MultiSource* ms, mcpl_particle_t* part){
 
 double MS_w_mean(MultiSource* ms, int N, WeightFun bias){
 	double w_mean=0;
-	int i;
-	for(i=0; i<ms->len; i++) w_mean += ms->ws[i] * KDS_w_mean(ms->s[i], N, bias);
-	return w_mean / ms->cdf[ms->len-1];
+	for(int i = 0; i < ms->len; i++) w_mean += ms->ws[i] * KDS_w_mean(ms->s[i], N, bias);
+	return w_mean / ms->cdf[ms->len - 1];
 }
 
 void MS_destroy(MultiSource* ms){
