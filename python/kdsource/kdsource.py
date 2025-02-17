@@ -78,7 +78,7 @@ def load(xmlfilename, N=-1):
 
 
 class KDSource:
-    def __init__(self, plist, geom, bw="silv", J=1.0, kernel="gaussian"):
+    def __init__(self, plist, geom, bw="silv", kernel="gaussian", use_sum_weights_for_J=True, J=1.0):
         """
         Object representing Kernel Density Estimation (KDE) sources.
 
@@ -105,10 +105,15 @@ class KDSource:
             numpy.ndarray is passed, it is the bandwidth for each
             particle. If a string is passed it is the bandwidth
             selection method. See bw_methods for available methods.
+        kernel: string, optional
+        use_sum_weights_for_J: bool, optional
+            If True, the current J will be set as the sum of weights 
+            from the particle list.
+            Otherwise, it will be set to the value passed in J.
+            Default is True.
         J: float, optional
             The source total current, in [1/s]. If set, the density
             plots will have the correct units.
-        kernel: string, optional
         """
         self.plist = plist
         self.geom = geom
@@ -123,10 +128,13 @@ class KDSource:
                 raise ValueError(msg)
         self.kde = TreeKDE(kernel=kernel, bw=bw)
         self.scaling = None
-        self.J = J
         self.kernel = kernel
         self.R = R[self.kernel[0]]
         self.fitted = False
+
+        self.J = self.plist.sum_weights if use_sum_weights_for_J and self.plist.params_set else J
+        if use_sum_weights_for_J and not self.plist.params_set:
+            print("plist parameters were not set. Using the provided value for J.")
 
     def fit(self, N=-1, skip=0, scaling=None, **kwargs):
         """
