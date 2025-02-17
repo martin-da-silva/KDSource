@@ -98,8 +98,7 @@ int main(int argc, char *argv[]) {
 			mcpl_add_particle(file, &part);
 		}
 	}
-	else if (xml_count)
-	{
+	else if (xml_count > 1)	{
 		MultiSource* ms = MS_open(xml_count, xmlfilenames, NULL);
 		double w_crit = MS_w_mean(ms, 1000, NULL);
 
@@ -116,29 +115,3 @@ int main(int argc, char *argv[]) {
 
 	return 0;
 }
-/*
-int main(int argc, char *argv[]){
-	const char *filename;
-	const char *outfilename;
-	long int N;
-	if(resample_parse_args(argc, argv, &filename, &outfilename, &N)) return 1;
-
-	KDSource* kds = KDS_open(filename);
-	mcpl_particle_t part;
-
-	mcpl_outfile_t file = mcpl_create_outfile(outfilename);
-	mcpl_hdr_set_srcname(file, "KDSource resample");
-	double w_crit = KDS_w_mean(kds, 1000, NULL);
-
-	printf("Resampling...\n");
-	long int i;
-	for(i=0; i<N; i++){
-		KDS_sample2(kds, &part, 1, w_crit, NULL, 1);
-		mcpl_add_particle(file, &part);
-	}
-	mcpl_closeandgzip_outfile(file);
-	printf("Successfully sampled %ld particles.\n", N);
-
-	return 0;
-}
-*/
