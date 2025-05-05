@@ -266,7 +266,6 @@ MultiSource* MS_create(int len, KDSource** s, const double* ws){
 	ms->cdf = (double*)malloc(ms->len*sizeof(double));
 
 	int i;
-	long long nparts_total = 0;
 	if (ws != NULL){
 		for(i=0; i<len; i++){
 			ms->s[i] = s[i];
@@ -274,15 +273,12 @@ MultiSource* MS_create(int len, KDSource** s, const double* ws){
 			ms->ws[i] = ws[i];
 		}
 	}
-	else{
+	else{ // Default case: source weight is set by the current J (intended to be the sum of weights)
 		for(i=0; i<len; i++){
 			ms->s[i] = s[i];
 			ms->J += s[i]->J;
-			nparts_total += s[i]->plist->npts;
 		}
-		for(i=0; i<len; i++){
-			ms->ws[i] = (double)s[i]->plist->npts / (double)nparts_total;
-		}
+		for(i = 0; i < len; i++) ms->ws[i] = s[i]->J / ms->J;
 	}
 
 	for(i=0; i<ms->len; i++) ms->cdf[i] = ms->ws[i];
