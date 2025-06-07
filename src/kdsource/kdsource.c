@@ -257,7 +257,7 @@ void KDS_destroy(KDSource* kds){
 	free(kds);
 }
 
-MultiSource* MS_create(int len, KDSource** s, const double* ws){
+MultiSource* MS_create(int len, KDSource** s, const double* ws, int adjust_weight){
 	MultiSource* ms = (MultiSource*)malloc(sizeof(MultiSource));
 	ms->len = len;
 	ms->s = (KDSource**)malloc(len*sizeof(KDSource*));
@@ -266,19 +266,32 @@ MultiSource* MS_create(int len, KDSource** s, const double* ws){
 	ms->cdf = (double*)malloc(ms->len*sizeof(double));
 
 	int i;
+	int nparts_total = 0;
 	if (ws != NULL){
-		for(i=0; i<len; i++){
+		for(i = 0; i < len; i++){
 			ms->s[i] = s[i];
 			ms->J += s[i]->J;
 			ms->ws[i] = ws[i];
 		}
-	}
-	else{ // Default case: source weight is set by the current J (intended to be the sum of weights)
-		for(i=0; i<len; i++){
+	} else if (!adjust_weight) {
+		// Adjust weight is OFF: use number of particles
+		for(i = 0; i < len; i++) {
+			ms->s[i] = s[i];
+			ms->J += s[i]->plist->npts;
+			nparts_total += s[i]->plist->npts;
+		}
+		for(i = 0; i < len; i++) {
+			ms->ws[i] = (double)(s[i]->plist->npts) / (double)nparts_total;
+		}
+	} else {
+		// Adjust weight is ON: use J (sum of weights)
+		for(i = 0; i < len; i++) {
 			ms->s[i] = s[i];
 			ms->J += s[i]->J;
 		}
-		for(i = 0; i < len; i++) ms->ws[i] = s[i]->J / ms->J;
+		for(i = 0; i < len; i++) {
+			ms->ws[i] = s[i]->J / ms->J;
+		}
 	}
 
 	for(i=0; i<ms->len; i++) ms->cdf[i] = ms->ws[i];
@@ -286,11 +299,11 @@ MultiSource* MS_create(int len, KDSource** s, const double* ws){
 	return ms;
 }
 
-MultiSource* MS_open(int len, const char** xmlfilenames, const double* ws){
+MultiSource* MS_open(int len, const char** xmlfilenames, const double* ws, int adjust_weight){
 	KDSource* s[len];
 	int i;
 	for(i=0; i<len; i++) s[i] = KDS_open(xmlfilenames[i]);
-	return MS_create(len, s, ws);
+	return MS_create(len, s, ws, adjust_weight);
 }
 
 int MS_sample2(MultiSource* ms, mcpl_particle_t* part, int perturb, double w_crit, WeightFun bias, int loop){

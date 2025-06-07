@@ -58,8 +58,8 @@ typedef struct MultiSource{
 	double* cdf;  // cdf of sources weights
 } MultiSource;
 
-MultiSource* MS_create(int len, KDSource** s, const double* ws);
-MultiSource* MS_open(int len, const char** xmlfilenames, const double* ws);
+MultiSource* MS_create(int len, KDSource** s, const double* ws, int adjust_weight);
+MultiSource* MS_open(int len, const char** xmlfilenames, const double* ws, int adjust_weight);
 int MS_sample2(MultiSource* ms, mcpl_particle_t* part, int perturb, double w_crit, WeightFun bias, int loop);
 int MS_sample(MultiSource* ms, mcpl_particle_t* part);
 double MS_w_mean(MultiSource* ms, int N, WeightFun bias);

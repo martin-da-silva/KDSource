@@ -15,12 +15,16 @@ void display_usage() {
 	printf("\t-o outfile: Name of MCPL file with new samples\n");
 	printf("\t            (default: \"resampled.mcpl\").\n");
 	printf("\t-n N:       Number of new samples (default: 1E5).\n");
+	printf("\t--no-perturb:     Disable geometry perturbation.\n");
+	printf("\t--no-adjust-wgt:  Disable weight adjustment (all weights set to 1).\n");
 	printf("\t-h, --help: Display usage instructions.\n");
 }
 
-int resample_parse_args(int argc, char **argv, const char ***xmlfilenames, const char **outfilename, long int *N) {
+int resample_parse_args(int argc, char **argv, const char ***xmlfilenames, const char **outfilename, long int *N, int *perturb, int *adjust_weight) {
 	*outfilename = 0;
 	*N = 1E5;
+	*perturb = 1;
+	*adjust_weight = 1;
 	int xml_count = 0;
 	int xml_capacity = 4; // Initial capacity for XML files array
     *xmlfilenames = (const char **)malloc(xml_capacity * sizeof(char *));
@@ -42,6 +46,14 @@ int resample_parse_args(int argc, char **argv, const char ***xmlfilenames, const
 		}
 		if(strcmp(argv[i],"-n") == 0) {
 			*N = atof(argv[++i]);
+			continue;
+		}
+		if(strcmp(argv[i], "--no-perturb") == 0) {
+			*perturb = 0;
+			continue;
+		}
+		if(strcmp(argv[i], "--no-adjust-wt") == 0) {
+			*adjust_weight = 0;
 			continue;
 		}
 		const char *firstdot = strchr(argv[i], '.');
@@ -81,6 +93,7 @@ int main(int argc, char *argv[]) {
 	const char **xmlfilenames;
     const char *outfilename;
     long int N;
+	int perturb, adjust_weight;
     int xml_count = resample_parse_args(argc, argv, &xmlfilenames, &outfilename, &N);
 	
 	mcpl_particle_t part;
@@ -89,7 +102,7 @@ int main(int argc, char *argv[]) {
 
 	if (xml_count == 1) {
 		KDSource* kds = KDS_open(xmlfilenames[0]);
-		double w_crit = KDS_w_mean(kds, 1000, NULL);
+		double w_crit = adjust_weight ? KDS_w_mean(kds, 1000, NULL) : -1;
 
 		printf("Resampling...\n");
 		long int i;
@@ -99,8 +112,8 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	else if (xml_count > 1)	{
-		MultiSource* ms = MS_open(xml_count, xmlfilenames, NULL);
-		double w_crit = MS_w_mean(ms, 1000, NULL);
+		MultiSource* ms = MS_open(xml_count, xmlfilenames, NULL, adjust_weight);
+		double w_crit = adjust_weight ? MS_w_mean(ms, 1000, NULL) : -1;
 
 		printf("Resampling...\n");
 		for(long int i = 0; i < N; i++){
